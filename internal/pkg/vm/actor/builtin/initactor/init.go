@@ -139,10 +139,7 @@ func (*Impl) GetNetwork(ctx runtime.InvocationContext) (string, uint8, error) {
 	}
 
 	var state State
-	err := actor.ReadState(ctx, &state)
-	if err != nil {
-		return "", errors.CodeError(err), err
-	}
+	ctx.StateHandle().Readonly(&state)
 
 	return state.Network, 0, nil
 }

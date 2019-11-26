@@ -663,10 +663,7 @@ func (*Impl) GetProvingSetCommitments(ctx invocationContext) (map[string]types.C
 	}
 
 	var state State
-	err := actor.ReadState(ctx, &state)
-	if err != nil {
-		return map[string]types.Commitments{}, errors.CodeError(err), err
-	}
+	ctx.StateHandle().Readonly(&state)
 
 	commitments := NewSectorSet()
 	for _, sectorID := range state.ProvingSet.Values() {
@@ -898,11 +895,7 @@ func (*Impl) GetPeerID(ctx invocationContext) (peer.ID, uint8, error) {
 	}
 
 	var state State
-
-	err := actor.ReadState(ctx, &state)
-	if err != nil {
-		return peer.ID(""), errors.CodeError(err), err
-	}
+	ctx.StateHandle().Readonly(&state)
 
 	return state.PeerID, 0, nil
 }
@@ -1236,10 +1229,7 @@ func (*Impl) SlashStorageFault(ctx invocationContext) (uint8, error) {
 // GetProvingWindow returns the proving period start and proving period end
 func (*Impl) GetProvingWindow(ctx invocationContext) ([]types.Uint64, uint8, error) {
 	var state State
-	err := actor.ReadState(ctx, &state)
-	if err != nil {
-		return nil, errors.CodeError(err), err
-	}
+	ctx.StateHandle().Readonly(&state)
 
 	return []types.Uint64{
 		types.Uint64(provingWindowStart(state).AsBigInt().Uint64()),
@@ -1251,10 +1241,7 @@ func (*Impl) GetProvingWindow(ctx invocationContext) ([]types.Uint64, uint8, err
 // power and proving period.
 func (a *Impl) CalculateLateFee(ctx invocationContext, height *types.BlockHeight) (types.AttoFIL, uint8, error) {
 	var state State
-	err := actor.ReadState(ctx, &state)
-	if err != nil {
-		return types.ZeroAttoFIL, errors.CodeError(err), err
-	}
+	ctx.StateHandle().Readonly(&state)
 
 	epoch := ctx.Runtime().CurrentEpoch()
 	collateral := a.getPledgeCollateralRequirement(state, &epoch)

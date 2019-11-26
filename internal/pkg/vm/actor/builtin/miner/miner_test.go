@@ -1267,8 +1267,7 @@ func TestAddFaults(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint8(0), code)
 
-		err = actor.ReadState(vmctx, &minerState)
-		require.NoError(t, err)
+		vmctx.StateHandle().Readonly(&minerState)
 
 		require.Equal(t, len(tc.expectedCurrent), minerState.CurrentFaultSet.Size())
 		require.True(t, minerState.CurrentFaultSet.HasSubset(types.NewIntSet(tc.expectedCurrent...)))
