@@ -45,7 +45,7 @@ func UnmarshalStorage(raw []byte, to interface{}) error {
 // Note that if 'f' returns an error, modifications to the storage are not
 // saved.
 func WithState(ctx runtime.InvocationContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
-	if err := ReadState(ctx, st); err != nil {
+	if err := readState(ctx, st); err != nil {
 		return nil, err
 	}
 
@@ -70,7 +70,7 @@ func WithState(ctx runtime.InvocationContext, st interface{}, f func() (interfac
 }
 
 // ReadState is a helper method to read the cbor node at the actor's Head into the given struct
-func ReadState(ctx runtime.InvocationContext, st interface{}) error {
+func readState(ctx runtime.InvocationContext, st interface{}) error {
 	storage := ctx.Storage()
 
 	memory, err := storage.Get(storage.Head())
