@@ -48,6 +48,7 @@ type VMContext struct {
 	ancestors         []block.TipSet
 	actors            ExecutableActorLookup
 	isCallerValidated bool
+	allowSideEffects  bool
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
@@ -82,6 +83,7 @@ func NewVMContext(params NewContextParams) *VMContext {
 		ancestors:         params.Ancestors,
 		actors:            params.Actors,
 		isCallerValidated: false,
+		allowSideEffects:  true,
 		deps:              makeDeps(params.State),
 	}
 }
@@ -110,6 +112,11 @@ func (ctx *VMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime
 
 // Send allows actors to invoke methods on other actors
 func (ctx *VMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+	// check if side-effects are allowed
+	if !ctx.allowSideEffects {
+		runtime.Abort("Calling Send() is not allowed during side-effet lock")
+	}
+
 	deps := ctx.deps
 
 	// the message sender is the `to` actor, so this is what we set as `from` in the new message
@@ -248,6 +255,13 @@ func (ctx *VMContext) CreateNewActor(addr address.Address, code cid.Cid) error {
 	newActor.Code = code
 
 	return nil
+}
+
+// AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
+//
+// At this time, any `Send` to the same or another actor is considered a side-effect.
+func (ctx *VMContext) AllowSideEffects(allow bool) {
+	ctx.allowSideEffects = allow
 }
 
 // Verifier returns an interface to the proof verification code

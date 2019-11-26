@@ -29,6 +29,7 @@ type FakeVMContext struct {
 	Charger                 func(cost types.GasUnits) error
 	Sampler                 func(sampleHeight *types.BlockHeight) ([]byte, error)
 	ActorCreator            func(addr address.Address, code cid.Cid) error
+	allowSideEffects        bool
 }
 
 // NewFakeVMContext fakes the state machine infrastructure so actor methods can be called directly
@@ -59,6 +60,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		ActorCreator: func(addr address.Address, code cid.Cid) error {
 			return nil
 		},
+		allowSideEffects: true,
 	}
 }
 
@@ -84,6 +86,10 @@ func (tc *FakeVMContext) Randomness(epoch types.BlockHeight, offset uint64) runt
 
 // Send sends a message to another actor
 func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+	// check if side-effects are allowed
+	if !tc.allowSideEffects {
+		runtime.Abort("Calling Send() is not allowed during side-effet lock")
+	}
 	return tc.Sender(to, method, value, params)
 }
 
@@ -148,6 +154,13 @@ func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid) erro
 // Verifier provides an interface to the proofs verifier
 func (tc *FakeVMContext) Verifier() verification.Verifier {
 	return tc.VerifierValue
+}
+
+// AllowSideEffects determines wether or not the actor code is allowed to produce side-effects.
+//
+// At this time, any `Send` to the same or another actor is considered a side-effect.
+func (tc *FakeVMContext) AllowSideEffects(allow bool) {
+	tc.allowSideEffects = allow
 }
 
 // Dragons: should I stay or should I go?

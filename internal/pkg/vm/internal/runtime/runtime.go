@@ -48,22 +48,44 @@ type InvocationContext interface {
 
 // ActorStateHandle handles the actor state, allowing actors to lock on the state.
 type ActorStateHandle interface {
-	// Take loads the state and locks it.
+	// Readonly loads a readonly copy of the state into the argument.
 	//
-	// Any futre calls to `Take` on this actors state will `abort` the execution.
-	// Review: for @spec, the impl of `Take` is panic'ing on the second call on the SAME object instance (this objects are not kept around, so it is always a new instance..).
-	Take(interface{})
-	// UpdateRelease updates the actor state and releases the lock on it.
+	// Any modification to the state is illegal and will result in an `Abort`.
+	Readonly(obj interface{})
+	// Transaction loads a mutable version of the state into the `obj` argument and protects
+	// the execution from side effects.
 	//
-	// No future calls to `Take` are allowed on this object.
-	// Review: for @spec, this method can currently be called without having called `Take` first.
-	UpdateRelease(interface{})
-	// Release asserts that the state has not changed and releases the lock on it.
+	// The second argument is a function which allows the caller to mutate the state.
 	//
-	// No future calls to `Take` are allowed on this object.
-	// Review: for @spec, this method can currently be called without having called `Take` first.
-	// Review: for @spec, why is this method required?
-	Release(interface{})
+	// The new state will be commited if there are no errors returned.
+	// Note: if an error is returned, the state changes will be DISCARDED and the reference will revert back.
+	//
+	// WARNING: If the state is modified AFTER the function returns, the execution will Abort.
+	//	        The state is mutable ONLY inside the lambda.
+	//
+	// Transaction can be thought of as having the following signature:
+	//
+	// `Transaction(F) -> (T, Error) where F: Fn(S) -> (T, error), S: ActorState`.
+	//
+	// Note: the actual Go signature is a bit different due to the lack of type system magic,
+	//       and also wanting to avoid some unnecesary reflection.
+	//
+	// Review: we might want to spend an hour or four making the signature look like it's supposed to..
+	// Hack: In order to know `S` and save some code, the actual signature looks like:
+	//       `Transaction(S, F) where S: ActorState, F: Fn() -> (T, Error)`.
+	//
+	// # Usage
+	//
+	// ```go
+	// var state SomeState
+	// ret, err := ctx.StateHandke().Transaction(&state, func() (interface{}, error) {
+	//   // make some changes
+	//	 st.ImLoaded = True
+	//   return st.Thing, nil
+	// })
+	// // state.ImLoaded = False // BAD!! state is readonly outside the lambda
+	// ```
+	Transaction(obj interface{}, f func() (interface{}, error)) (interface{}, error)
 }
 
 // Randomness is a string of random bytes
