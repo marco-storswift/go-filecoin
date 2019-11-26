@@ -49,6 +49,7 @@ type VMContext struct {
 	actors            ExecutableActorLookup
 	isCallerValidated bool
 	allowSideEffects  bool
+	stateHandle       actorStateHandle
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
@@ -70,7 +71,7 @@ type NewContextParams struct {
 
 // NewVMContext returns an initialized context.
 func NewVMContext(params NewContextParams) *VMContext {
-	return &VMContext{
+	ctx := VMContext{
 		from:              params.From,
 		to:                params.To,
 		toAddr:            params.ToAddr,
@@ -86,6 +87,8 @@ func NewVMContext(params NewContextParams) *VMContext {
 		allowSideEffects:  true,
 		deps:              makeDeps(params.State),
 	}
+	ctx.stateHandle = newActorStateHandle(&ctx, ctx.to.Head)
+	return &ctx
 }
 
 // GasUnits retrieves the gas cost so far
@@ -172,6 +175,9 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 		return nil, ret, err
 	}
 
+	// validate state access
+	ctx.stateHandle.Validate()
+
 	return out, ret, nil
 }
 
@@ -202,8 +208,7 @@ func (ctx *VMContext) Caller() address.Address {
 
 // StateHandle handles access to the actor state.
 func (ctx *VMContext) StateHandle() runtime.ActorStateHandle {
-	// Review: this is how the spec does it, although I think this handles need to be maintained in memory for the current high level dispatch
-	return NewActorStateHandle(ctx, ctx.to.Head)
+	return &ctx.stateHandle
 }
 
 // ValueReceived is the amount of FIL received by this actor during this method call.

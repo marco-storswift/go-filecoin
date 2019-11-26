@@ -24,7 +24,12 @@ type actorStateHandleContext interface {
 
 // NewActorStateHandle returns a new `actorStateHandle`
 func NewActorStateHandle(ctx actorStateHandleContext, head cid.Cid) runtime.ActorStateHandle {
-	return &actorStateHandle{
+	aux := newActorStateHandle(ctx, head)
+	return &aux
+}
+
+func newActorStateHandle(ctx actorStateHandleContext, head cid.Cid) actorStateHandle {
+	return actorStateHandle{
 		ctx:         ctx,
 		head:        &head,
 		validations: []validateFn{},
